@@ -143,6 +143,16 @@ cd ../scripts
 - [Helm Documentation](https://helm.sh/docs/)
 - [Kind Documentation](https://kind.sigs.k8s.io/)
 
+## 🛠️ Troubleshooting
+
+If you encounter issues during the tutorial, check the **[TROUBLESHOOTING-GUIDE.md](./TROUBLESHOOTING-GUIDE.md)** which documents all the critical fixes and "hacks" discovered during development.
+
+**Key Issues & Solutions:**
+- **Ingress 404 errors** → Move ingress controller to control plane node
+- **Namespace stuck in Terminating** → Remove finalizers or restart Kind cluster
+- **Images not found** → Run `./scripts/build-images.sh` to load into Kind
+- **Host routing issues** → Configure ingress host or use wildcard
+
 ---
 
 **Ready to master Kubernetes? Start your journey here!** 🚀
