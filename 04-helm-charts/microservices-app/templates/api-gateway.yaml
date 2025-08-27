@@ -1,0 +1,68 @@
+# API Gateway Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-api-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  replicas: {{ .Values.replicaCount.apiGateway }}
+  selector:
+    matchLabels:
+      {{- include "microservices-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api-gateway
+  template:
+    metadata:
+      labels:
+        {{- include "microservices-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: "{{ .Values.image.repository.apiGateway }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.ports.apiGateway }}
+        env:
+        - name: USER_SERVICE_URL
+          value: "http://{{ include "microservices-app.fullname" . }}-user-service:{{ .Values.service.ports.userService }}"
+        - name: PRODUCT_SERVICE_URL
+          value: "http://{{ include "microservices-app.fullname" . }}-product-service:{{ .Values.service.ports.productService }}"
+        - name: PORT
+          value: {{ .Values.service.ports.apiGateway | quote }}
+        livenessProbe:
+          httpGet:
+            path: /api/gateway/health
+            port: {{ .Values.service.ports.apiGateway }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/gateway/health
+            port: {{ .Values.service.ports.apiGateway }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.resources.apiGateway | nindent 10 }}
+      restartPolicy: Always
+---
+# API Gateway Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-api-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+spec:
+  selector:
+    {{- include "microservices-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
+  ports:
+  - port: {{ .Values.service.ports.apiGateway }}
+    targetPort: {{ .Values.service.ports.apiGateway }}
+    name: http
+  type: {{ .Values.service.type }}

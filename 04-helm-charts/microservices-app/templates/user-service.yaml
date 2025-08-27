@@ -1,0 +1,68 @@
+# User Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-user-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: user-service
+spec:
+  replicas: {{ .Values.replicaCount.userService }}
+  selector:
+    matchLabels:
+      {{- include "microservices-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: user-service
+  template:
+    metadata:
+      labels:
+        {{- include "microservices-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: "{{ .Values.image.repository.userService }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.ports.userService }}
+        env:
+        - name: MONGODB_URL
+          value: "mongodb://{{ include "microservices-app.fullname" . }}-mongodb:27017/users"
+        - name: REDIS_URL
+          value: "redis://{{ include "microservices-app.fullname" . }}-redis:6379"
+        - name: PORT
+          value: {{ .Values.service.ports.userService | quote }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.service.ports.userService }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.service.ports.userService }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.resources.userService | nindent 10 }}
+      restartPolicy: Always
+---
+# User Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-user-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: user-service
+spec:
+  selector:
+    {{- include "microservices-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: user-service
+  ports:
+  - port: {{ .Values.service.ports.userService }}
+    targetPort: {{ .Values.service.ports.userService }}
+    name: http
+  type: {{ .Values.service.type }}

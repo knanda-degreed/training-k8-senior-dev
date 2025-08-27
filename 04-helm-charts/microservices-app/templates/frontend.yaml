@@ -1,0 +1,66 @@
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.replicaCount.frontend }}
+  selector:
+    matchLabels:
+      {{- include "microservices-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "microservices-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.image.repository.frontend }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.ports.frontend }}
+        env:
+        - name: API_GATEWAY_URL
+          value: "http://{{ include "microservices-app.fullname" . }}-api-gateway:{{ .Values.service.ports.apiGateway }}"
+        - name: PORT
+          value: {{ .Values.service.ports.frontend | quote }}
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: {{ .Values.service.ports.frontend }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: {{ .Values.service.ports.frontend }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.resources.frontend | nindent 10 }}
+      restartPolicy: Always
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  selector:
+    {{- include "microservices-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+  ports:
+  - port: {{ .Values.service.ports.frontend }}
+    targetPort: {{ .Values.service.ports.frontend }}
+    name: http
+  type: {{ .Values.service.type }}

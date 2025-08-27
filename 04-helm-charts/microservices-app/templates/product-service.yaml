@@ -1,0 +1,74 @@
+# Product Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-product-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: product-service
+spec:
+  replicas: {{ .Values.replicaCount.productService }}
+  selector:
+    matchLabels:
+      {{- include "microservices-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: product-service
+  template:
+    metadata:
+      labels:
+        {{- include "microservices-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: product-service
+    spec:
+      containers:
+      - name: product-service
+        image: "{{ .Values.image.repository.productService }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.ports.productService }}
+        env:
+        - name: POSTGRES_HOST
+          value: "{{ include "microservices-app.fullname" . }}-postgres"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.database | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.username | quote }}
+        - name: POSTGRES_PASSWORD
+          value: {{ .Values.postgres.password | quote }}
+        - name: REDIS_URL
+          value: "redis://{{ include "microservices-app.fullname" . }}-redis:6379"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.service.ports.productService }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.service.ports.productService }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.resources.productService | nindent 10 }}
+      restartPolicy: Always
+---
+# Product Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservices-app.fullname" . }}-product-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "microservices-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: product-service
+spec:
+  selector:
+    {{- include "microservices-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: product-service
+  ports:
+  - port: {{ .Values.service.ports.productService }}
+    targetPort: {{ .Values.service.ports.productService }}
+    name: http
+  type: {{ .Values.service.type }}
