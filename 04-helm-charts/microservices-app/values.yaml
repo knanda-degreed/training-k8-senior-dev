@@ -46,17 +46,16 @@ ingress:
   enabled: true
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
   hosts:
-    - host: k8s-tutorial.local
+    - host: "k8s-tutorial.local"
       paths:
         - path: /
           pathType: Prefix
           service: frontend
         - path: /api
           pathType: Prefix
-          service: api-gateway
+          service: apiGateway
   tls: []
 
 resources:
